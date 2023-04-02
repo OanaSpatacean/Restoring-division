@@ -1,0 +1,175 @@
+module RestoringDivision(
+  clock,
+  reset,
+  start,
+  Q, //deimpartit, A[7:4]
+  M, //impartitor
+  valid,
+  cat,
+  rest
+);
+
+input clock;
+input reset;
+input start;
+input [3:0]Q,M;
+  
+output [3:0]cat,rest;
+output valid;
+
+//definirea registrilor
+reg [7:0] A,A_urm,A_aux,A_aux2;
+reg valid, valid_urm;
+reg stare, stare_urm;
+reg [1:0] count,count_urm;
+
+  //extrag date din registrul A si le atribui altor variabile
+assign rest = A[7:4];
+assign cat = A[3:0];
+
+always @(posedge clock or negedge reset) //executa blocul ori de câte ori se produce un front crescător pe semnalul de ceas sau un front descrescător pe semnalul de reset
+   begin
+     if(!reset) //verifică dacă semnalul de reset este inactiv
+        begin//inactiv
+          A <= 0;//setez valorile la iesire
+          valid <= 0;
+          stare <= 0;
+          count <= 0;
+        end
+      else
+        begin//activ
+          A <= A_urm;
+          valid <= valid_urm;
+          stare <= stare_urm;
+          count <= count_urm;
+        end
+   end
+
+always @(*) //executa blocul de fiecare dată când oricare din intrări se schimbă
+  begin 
+    if(stare == 0) //idle, așteaptă să primească o intrare
+      begin //seteaza valorile de pornire ale semnalelor de intrare
+        count_urm = 0;
+        valid_urm = 0;
+        //așteaptă să primească un semnal start pentru a începe operația de împărțire
+        if(start == 1) //Dacă semnalul start este primit
+          begin
+            stare_urm = 1; //modulul trece in starea de start          
+            A_urm[3:0] = Q; //in Q(din tabel) se incarca deimpartitul
+            A_urm[7:4] = 0; //in A(din tabel) se incarca 0
+          end
+        else ////Dacă semnalul start nu este primit
+          begin
+            stare_urm = stare; //se ramane in starea curenta
+            A_urm[7:0] = 0; //se incarca 0 si in A si si in Q(din tabel)
+          end
+      end
+    
+    if(stare == 1) //start, executa impărțirea, împărțire a lui A cu M 
+      begin
+          count_urm = count + 1; //incrrementeaza count   
+          A_aux = A<<1; //shifteaza la stanga AQ  
+          A_aux2[7:4] = A_aux[7:4]-M; //A=A-M
+        
+        //se verifica semnul lui A
+        if(A_aux2[7] == 1) //daca e 1, pozitiv
+            begin
+              A_urm[0] = 0; //Q[0] = 0
+              //restul biților din A_urm sunt setați la aceeași valoare ca și cei din A_aux = A<<1
+              A_urm[3:1] = A_aux[3:1]; 
+              A_urm[7:4] = A_aux[7:4];
+            end
+		else 
+            begin
+              	A_urm[0] = 1; // //Q[0] = 1
+              //restul biților din A_urm sunt setați la aceeași valoare ca și cei din A_aux2 = A_aux - M
+                A_urm[3:1] = A_aux[3:1];
+              	A_urm[7:4] = A_aux2[7:4];
+             end
+
+		//verifică dacă toți biții au fost procesați
+        if(&count == 0) //o operație logică SI pe toți biții variabilei count
+          begin
+            valid_urm = 0;
+        	stare_urm = stare; // modulul se întoarce la starea idle
+          end
+ 		else 
+          begin
+            valid_urm = 1;
+            stare_urm = 0; //modulul trece în starea de așteptare
+          end      
+      end
+  end
+  
+  
+endmodule
+
+
+
+
+
+
+
+module RestoringDivision_tb;
+
+reg clock,reset,start;
+reg [3:0]Q,M;
+  
+wire [3:0]cat,rest;//pentru a obține ieșirile cat și rest
+wire valid; //semnalul valid care indică dacă rezultatul este disponibil
+
+always #5 clock = ~clock; //"clock" e alternativ 0 și 1 la fiecare perioadă a semnalului de ceas
+
+
+initial
+  begin
+    $dumpfile("dump.vcd");
+    $dumpvars(1);
+    
+    $monitor("%d : %d = %d rest %d    valid=%d",Q,M,cat,rest,valid);
+    
+    Q=14;
+    M=5;
+    //așteaptă până când semnalul valid este activat
+    clock=1;
+    reset=0;
+    start=0;
+    
+    #10 
+    reset = 1;
+    
+    #20
+    start = 1;
+    
+    #10
+    start = 0;
+    
+    @valid
+    
+    #10
+    $display("\n");
+    
+    //reia testul
+    Q=10;
+    M=3;
+    
+    start = 1;
+    
+    #10
+    start = 0; 
+    
+  end 
+  
+RestoringDivision instantiere(
+  .clock(clock),
+  .reset(reset),
+  .start(start),
+  .Q(Q),
+  .M(M),
+  .valid(valid),
+  .cat(cat),
+  .rest(rest)
+);
+
+  
+endmodule

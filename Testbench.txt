@@ -1,0 +1,60 @@
+module RestoringDivision_tb;
+
+reg clock,reset,start;
+reg [3:0]Q,M;
+  
+wire [3:0]cat,rest;//pentru a obține ieșirile cat și rest
+wire valid; //semnalul valid care indică dacă rezultatul este disponibil
+
+always #5 clock = ~clock; //"clock" e alternativ 0 și 1 la fiecare perioadă a semnalului de ceas
+
+
+initial
+  begin
+    $dumpfile("dump.vcd");
+    $dumpvars(1);
+    
+    $monitor("%d : %d = %d rest %d    valid=%d",Q,M,cat,rest,valid);
+    
+    Q=14;
+    M=5;
+    //așteaptă până când semnalul valid este activat
+    clock=1;
+    reset=0;
+    start=0;
+    
+    #10 
+    reset = 1;
+    
+    #20
+    start = 1;
+    
+    #10
+    start = 0;
+    
+    @valid
+    
+    #10
+    $display("\n");
+    
+    //reia testul
+    Q=10;
+    M=3;
+    
+    start = 1;
+    
+    #10
+    start = 0; 
+    
+  end 
+  
+RestoringDivision instantiere(
+  .clock(clock),
+  .reset(reset),
+  .start(start),
+  .Q(Q),
+  .M(M),
+  .valid(valid),
+  .cat(cat),
+  .rest(rest)
+);
