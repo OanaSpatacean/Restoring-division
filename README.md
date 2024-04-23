@@ -1,5 +1,5 @@
 # Restoring-division
-Project for University made with my colleague, Iulia.
+Project for University made with my colleague, Iulia .
 
 Implementarea algoritmului Restoring Division în Verilog este un proces
 complex, dar bine definit, care implică mai mulți pași. De la proiectarea arhitecturii hardware și a
